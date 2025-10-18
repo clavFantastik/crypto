@@ -1,0 +1,15 @@
+{
+  "name": "crypto",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/demo/index.js",
+    "dev": "tsc && node dist/demo/index.js",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "typescript": "^5.2.0"
+  }
+}
