@@ -1,0 +1,24 @@
+{
+  "name": "rijndael-implementation",
+  "version": "1.0.0",
+  "description": "Rijndael/AES implementation according to FIPS-197",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:1": "jest src/galois/tests/",
+    "test:2": "jest src/aes-rijndael/tests/",
+    "test:3": "jest src/modes/tests/",
+    "test:1:watch": "jest src/galois/tests/ --watch",
+    "test:2:watch": "jest src/aes-rijndael/tests/ --watch",
+    "test:3:watch": "jest src/modes/tests/ --watch",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
+  }
+}
