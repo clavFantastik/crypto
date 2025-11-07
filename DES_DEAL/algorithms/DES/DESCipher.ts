@@ -12,4 +12,6 @@ export class DESCipher extends FeistelNetwork implements ISymmetricCipher {
         // Наследуем от FeistelNetwork: 8 байт блок, 16 раундов
         super(keyExpansion, encryptor, 8, 16);
     }
+
+    
 }

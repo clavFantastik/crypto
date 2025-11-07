@@ -4,7 +4,19 @@ import { DES_CONSTANTS } from '../../constants/constants.js';
 
 
 export class DESEncryptor implements IEncryptor {
-     /**  Функция Фейстеля (F-функция)  **/
+    /** Начальная перестановка IP */
+    initialPermutation(block: Uint8Array): Uint8Array {
+        if (block.length !== 8) throw new Error('IP block must be 8 bytes (64 bits)');
+        return bitPermutation(block, DES_CONSTANTS.IP, false, 8);
+    }
+
+    /** Конечная перестановка IP^-1 */
+    finalPermutation(block: Uint8Array): Uint8Array {
+        if (block.length !== 8) throw new Error('IP^-1 block must be 8 bytes (64 bits)');
+        return bitPermutation(block, DES_CONSTANTS.IP_INV, false, 8);
+    }
+
+    /**  Функция Фейстеля (F-функция)  **/
     encryptBlock(inputBlock: Uint8Array, roundKey: Uint8Array): Uint8Array {
         if (inputBlock.length !== 4) throw new Error('inputBlock must be 4 bytes (32 bits)');
         if (roundKey.length !== 6) throw new Error('roundKey must be 6 bytes (48 bits)');

@@ -57,6 +57,8 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
         this.validateBlock(block);
         this.validateRoundKeys(roundKeys);
 
+        const afterIP = this.applyInitialPermutation(block);
+
         // 1. ДЕЛЕНИЕ БЛОКА НА ПОЛОВИНЫ
         const halfSize = this._blockSize / 2;
         let L: Uint8Array = block.slice(0, halfSize);
@@ -76,15 +78,18 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
         }
 
         // 3. ФИНАЛЬНАЯ ПЕРЕСТАНОВКА (последний раунд без свопа)
-        const result = new Uint8Array(this._blockSize);
-        result.set(R, 0);
-        result.set(L, halfSize);
-        return result;
+        const afterFeistel = new Uint8Array(this._blockSize);
+        afterFeistel.set(R, 0);
+        afterFeistel.set(L, halfSize);
+
+        return afterFeistel;
     }
 
     decryptBlockWithKeys(block: Uint8Array, roundKeys: Uint8Array[]): Uint8Array {
         this.validateBlock(block);
         this.validateRoundKeys(roundKeys);
+
+        const afterIP = this.applyInitialPermutation(block);
 
         // ЕДИНСТВЕННОЕ ОТЛИЧИЕ - КЛЮЧИ В ОБРАТНОМ ПОРЯДКЕ!
         const reversedKeys = [...roundKeys].reverse();
@@ -102,10 +107,11 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
             R = newR;
         }
 
-        const result = new Uint8Array(this._blockSize);
-        result.set(R, 0);
-        result.set(L, halfSize);
-        return result;
+        const afterFeistel = new Uint8Array(this._blockSize);
+        afterFeistel.set(R, 0);
+        afterFeistel.set(L, halfSize);
+
+        return afterFeistel;
     }
 
     encryptWithKey(block: Uint8Array, masterKey: Uint8Array): Uint8Array {
@@ -240,5 +246,19 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
                 throw new Error(`Round key ${i} must be Uint8Array`);
             }
         }
+    }
+
+    private applyInitialPermutation(block: Uint8Array): Uint8Array {
+        if (typeof (this.encryptor as any).initialPermutation === 'function') {
+            return (this.encryptor as any).initialPermutation(block);
+        }
+        return block;
+    }
+
+    private applyFinalPermutation(block: Uint8Array): Uint8Array {
+        if (typeof (this.encryptor as any).finalPermutation === 'function') {
+            return (this.encryptor as any).finalPermutation(block);
+        }
+        return block;
     }
 }
