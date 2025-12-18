@@ -70,7 +70,6 @@ export class CryptoContext {
         }
     }
 
-    // Асинхронные методы
     async encryptAsync(data: Uint8Array): Promise<Uint8Array> {
         const paddedData = pad(data, this.blockSize, this.padding);
         const blocks = splitBlocks(paddedData, this.blockSize);
@@ -95,7 +94,6 @@ export class CryptoContext {
             case CipherMode.CTR: return await this.encryptCTRAsync(blocks);
             case CipherMode.OFB: return await this.encryptOFBAsync(blocks);
             case CipherMode.RandomDelta: return await this.encryptRandomDeltaAsync(blocks);
-            // Для режимов с зависимостями используем синхронную версию
             default: return this.encryptBlocks(blocks);
         }
     }
@@ -106,7 +104,6 @@ export class CryptoContext {
             case CipherMode.CTR: return await this.decryptCTRAsync(blocks);
             case CipherMode.OFB: return await this.decryptOFBAsync(blocks);
             case CipherMode.RandomDelta: return await this.decryptRandomDeltaAsync(blocks);
-            // Для режимов с зависимостями используем синхронную версию
             default: return this.decryptBlocks(blocks);
         }
     }
@@ -122,7 +119,6 @@ export class CryptoContext {
         const syncMethod = encrypt ? 'encryptBlock' : 'decryptBlock';
         const asyncMethod = encrypt ? 'encryptBlockAsync' : 'decryptBlockAsync';
         
-        // БЕЗОПАСНАЯ ПРОВЕРКА перед вызовом асинхронного метода
         if (this.cipher[asyncMethod]) {
             return await this.cipher[asyncMethod](block);
         } else {
@@ -141,7 +137,6 @@ export class CryptoContext {
     private async encryptCTRAsync(blocks: Uint8Array[]): Promise<Uint8Array[]> {
         const counters = this.generateCounters(blocks.length);
         
-        // БЕЗОПАСНАЯ ПРОВЕРКА перед вызовом асинхронного метода
         const keystreamPromises = counters.map(counter => {
             if (this.cipher.encryptBlockAsync) {
                 return this.cipher.encryptBlockAsync(counter);
@@ -151,18 +146,11 @@ export class CryptoContext {
         });
         
         const keystreams = await Promise.all(keystreamPromises);
-        
-        // Параллельно выполняем XOR
-        const resultPromises = blocks.map(async (block, i) => {
-            return xorBytes(block, keystreams[i]);
-        });
-        
+        const resultPromises = blocks.map(async (block, i) => xorBytes(block, keystreams[i]));
         return await Promise.all(resultPromises);
     }
 
-
     private async decryptCTRAsync(blocks: Uint8Array[]): Promise<Uint8Array[]> {
-        // CTR шифрование и дешифрование идентичны
         return await this.encryptCTRAsync(blocks);
     }
 
@@ -171,7 +159,6 @@ export class CryptoContext {
         const result: Uint8Array[] = [];
 
         for (const block of blocks) {
-            // БЕЗОПАСНАЯ ПРОВЕРКА перед вызовом асинхронного метода
             if (this.cipher.encryptBlockAsync) {
                 keystream = await this.cipher.encryptBlockAsync(keystream);
             } else {
@@ -184,19 +171,16 @@ export class CryptoContext {
     }
 
     private async decryptOFBAsync(blocks: Uint8Array[]): Promise<Uint8Array[]> {
-        // OFB шифрование и дешифрование идентичны
         return await this.encryptOFBAsync(blocks);
     }
 
     private async encryptRandomDeltaAsync(blocks: Uint8Array[]): Promise<Uint8Array[]> {
         const counters = this.generateCounters(blocks.length);
-        
-        // Параллельно обрабатываем блоки
+
         const promises = counters.map(async (counter, i) => {
             const delta = this.generateDelta(counter);
             const modifiedCounter = xorBytes(counter, delta);
             
-            // БЕЗОПАСНАЯ ПРОВЕРКА перед вызовом асинхронного метода
             let keystream: Uint8Array;
             if (this.cipher.encryptBlockAsync) {
                 keystream = await this.cipher.encryptBlockAsync(modifiedCounter);
@@ -211,19 +195,14 @@ export class CryptoContext {
     }
 
     private async decryptRandomDeltaAsync(blocks: Uint8Array[]): Promise<Uint8Array[]> {
-        // RandomDelta шифрование и дешифрование идентичны
         return await this.encryptRandomDeltaAsync(blocks);
     }
 
-    // Принцип: Каждый блок шифруется независимо. 
-    // Проблема: Одинаковые блоки дают одинаковый шифротекст → уязвимость к анализу.
     private processECB(blocks: Uint8Array[], encrypt: boolean): Uint8Array[] {
         const method = encrypt ? 'encryptBlock' : 'decryptBlock';
         return blocks.map(block => this.cipher[method](block));
     }
 
-    // Принцип: Каждый блок XOR-ится с предыдущим зашифрованным блоком перед шифрованием.
-    // Преимущество: Лавинный эффект - изменение одного бита влияет на все последующие блоки.
     private processCBC(blocks: Uint8Array[], encrypt: boolean): Uint8Array[] {
         const result: Uint8Array[] = [];
         let previousBlock = this.iv!;
@@ -247,7 +226,6 @@ export class CryptoContext {
         return result;
     }
 
-    // Улучшенный CBC: Ошибка в одном блоке влияет на все последующие блоки при дешифровании.
     private processPCBC(blocks: Uint8Array[], encrypt: boolean): Uint8Array[] {
         const result: Uint8Array[] = [];
         let feedback = this.iv!;
@@ -271,7 +249,6 @@ export class CryptoContext {
         return result;
     }
 
-    // Принцип: Превращает блочный шифр в поточный. Шифрует предыдущий выход (при шифровании) или вход (при дешифровании).
     private processCFB(blocks: Uint8Array[], encrypt: boolean): Uint8Array[] {
         const result: Uint8Array[] = [];
         let shiftRegister = this.iv!;
@@ -286,7 +263,6 @@ export class CryptoContext {
         return result;
     }
 
-    // Принцип: Генерирует ключевой поток независимо от данных. Можно предвычислить ключевой поток.
     private processOFB(blocks: Uint8Array[]): Uint8Array[] {
         const result: Uint8Array[] = [];
         let keystream = this.iv!;
@@ -299,7 +275,6 @@ export class CryptoContext {
         return result;
     }
 
-    // Принцип: Использует счетчик для генерации ключевого потока. Параллелизуем!
     private processCTR(blocks: Uint8Array[]): Uint8Array[] {
         const result: Uint8Array[] = [];
         let counter = this.iv!;
@@ -313,7 +288,6 @@ export class CryptoContext {
         return result;
     }
 
-    // Особенность: Добавляет нелинейность в CTR режим через "дельта"-функцию.
     private processRandomDelta(blocks: Uint8Array[]): Uint8Array[] {
         const result: Uint8Array[] = [];
         let counter = this.iv!;

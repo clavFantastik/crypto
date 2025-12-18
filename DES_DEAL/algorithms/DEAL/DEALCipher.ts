@@ -47,23 +47,19 @@ export class DEALCipher extends FeistelNetwork implements ISymmetricCipher {
     constructor(key: Uint8Array) {
         const keySize = key.length;
         
-        // DEAL поддерживает 3 размера ключей:
         if (keySize !== 16 && keySize !== 24 && keySize !== 32) {
             throw new Error('DEAL key must be 16 (DEAL-128), 24 (DEAL-192), or 32 (DEAL-256) bytes');
         }
 
-        // 1. Генерация ключей для DEAL
         const keyExpansion = new DEALKeyExpansion();
 
-        // 2. Адаптер DES (используем первые 8 байт ключа для DES)
         const desAdapter = new DESAdapter(key.slice(0, 8));
 
-        // 3. F-функция DEAL
         const encryptor = new DEALEncryptor(desAdapter);
         
-        
-        const blockSize = 16; // 128-битные блоки (в 2 раза больше DES!)
-        const rounds = keySize === 16 ? 6 : 8; // 6 раундов для DEAL-128, 8 для остальных
+    
+        const blockSize = 16; 
+        const rounds = keySize === 32 ? 8 : 6; 
 
         super(keyExpansion, encryptor, blockSize, rounds);
         this.keySize = keySize;

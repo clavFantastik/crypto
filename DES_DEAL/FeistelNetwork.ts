@@ -1,7 +1,6 @@
 import { IFeistelNetwork, ISymmetricCipher, IKeyExpansion, IEncryptor } from './interfaces.js';
 import { xorBytes } from './utils/bitUtils.js';
 
-
 export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
     private keyExpansion: IKeyExpansion;
     private encryptor: IEncryptor;
@@ -57,43 +56,29 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
         this.validateBlock(block);
         this.validateRoundKeys(roundKeys);
 
-        const afterIP = this.applyInitialPermutation(block);
-
-        // 1. ДЕЛЕНИЕ БЛОКА НА ПОЛОВИНЫ
         const halfSize = this._blockSize / 2;
         let L: Uint8Array = block.slice(0, halfSize);
         let R: Uint8Array = block.slice(halfSize);
 
-        // 2. ВЫПОЛНЕНИЕ РАУНДОВ
         for (let i = 0; i < this._rounds; i++) {
-            // ФОРМУЛА ФЕЙСТЕЛЯ:
-            // L[i] = R[i-1]
-            // R[i] = L[i-1] XOR F(R[i-1], K[i])
             const newL = R;
             const fResult = this.encryptor.encryptBlock(R, roundKeys[i]);
             const newR = xorBytes(L, fResult);
-            
             L = newL;
             R = newR;
         }
 
-        // 3. ФИНАЛЬНАЯ ПЕРЕСТАНОВКА (последний раунд без свопа)
-        const afterFeistel = new Uint8Array(this._blockSize);
-        afterFeistel.set(R, 0);
-        afterFeistel.set(L, halfSize);
-
-        return afterFeistel;
+        const result = new Uint8Array(this._blockSize);
+        result.set(R, 0);
+        result.set(L, halfSize);
+        return result;
     }
 
     decryptBlockWithKeys(block: Uint8Array, roundKeys: Uint8Array[]): Uint8Array {
         this.validateBlock(block);
         this.validateRoundKeys(roundKeys);
 
-        const afterIP = this.applyInitialPermutation(block);
-
-        // ЕДИНСТВЕННОЕ ОТЛИЧИЕ - КЛЮЧИ В ОБРАТНОМ ПОРЯДКЕ!
         const reversedKeys = [...roundKeys].reverse();
-        
         const halfSize = this._blockSize / 2;
         let L: Uint8Array = block.slice(0, halfSize);
         let R: Uint8Array = block.slice(halfSize);
@@ -102,16 +87,14 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
             const newL = R;
             const fResult = this.encryptor.encryptBlock(R, reversedKeys[i]);
             const newR = xorBytes(L, fResult);
-            
             L = newL;
             R = newR;
         }
 
-        const afterFeistel = new Uint8Array(this._blockSize);
-        afterFeistel.set(R, 0);
-        afterFeistel.set(L, halfSize);
-
-        return afterFeistel;
+        const result = new Uint8Array(this._blockSize);
+        result.set(R, 0);
+        result.set(L, halfSize);
+        return result;
     }
 
     encryptWithKey(block: Uint8Array, masterKey: Uint8Array): Uint8Array {
@@ -124,8 +107,6 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
         return this.decryptBlockWithKeys(block, roundKeys);
     }
 
-
-    // Асинхронные методы
     async encryptBlockAsync(block: Uint8Array): Promise<Uint8Array> {
         this.validateBlock(block);
         if (this.roundKeys.length < this._rounds) {
@@ -152,17 +133,13 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
 
         for (let i = 0; i < this._rounds; i++) {
             const newL = R;
-            
-            // БЕЗОПАСНАЯ ПРОВЕРКА перед вызовом асинхронного метода
             let fResult: Uint8Array;
             if (this.encryptor.encryptBlockAsync) {
                 fResult = await this.encryptor.encryptBlockAsync(R, roundKeys[i]);
             } else {
                 fResult = this.encryptor.encryptBlock(R, roundKeys[i]);
             }
-            
             const newR = xorBytes(L, fResult);
-            
             L = newL;
             R = newR;
         }
@@ -184,17 +161,13 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
 
         for (let i = 0; i < this._rounds; i++) {
             const newL = R;
-            
-            // БЕЗОПАСНАЯ ПРОВЕРКА перед вызовом асинхронного метода
             let fResult: Uint8Array;
             if (this.encryptor.encryptBlockAsync) {
                 fResult = await this.encryptor.encryptBlockAsync(R, reversedKeys[i]);
             } else {
                 fResult = this.encryptor.encryptBlock(R, reversedKeys[i]);
             }
-            
             const newR = xorBytes(L, fResult);
-            
             L = newL;
             R = newR;
         }
@@ -246,19 +219,5 @@ export class FeistelNetwork implements IFeistelNetwork, ISymmetricCipher {
                 throw new Error(`Round key ${i} must be Uint8Array`);
             }
         }
-    }
-
-    private applyInitialPermutation(block: Uint8Array): Uint8Array {
-        if (typeof (this.encryptor as any).initialPermutation === 'function') {
-            return (this.encryptor as any).initialPermutation(block);
-        }
-        return block;
-    }
-
-    private applyFinalPermutation(block: Uint8Array): Uint8Array {
-        if (typeof (this.encryptor as any).finalPermutation === 'function') {
-            return (this.encryptor as any).finalPermutation(block);
-        }
-        return block;
     }
 }
